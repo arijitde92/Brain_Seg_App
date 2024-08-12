@@ -1,12 +1,12 @@
 # app.py
 
-from flask import Flask, render_template, request, redirect, url_for
 import os
+import subprocess
+from time import time
+from flask import Flask, render_template, request, redirect, url_for
 import SimpleITK as sitk
 import numpy as np
-import subprocess
 import matplotlib.pyplot as plt
-from time import time
 import plotly.graph_objs as go
 
 app = Flask(__name__)
@@ -55,7 +55,7 @@ def resample_image_to_square_grid(image):
 
 
 def segment_hippocampus(image_path):
-    absolute_path = os.path.abspath(os.path.expanduser(UPLOAD_FOLDER))
+    absolute_path = os.path.abspath(os.path.expanduser(os.path.join(UPLOAD_FOLDER, 'hipp')))
     print(absolute_path)
     # Define the command and arguments
     command = "hsf"
@@ -95,8 +95,22 @@ def segment_hippocampus(image_path):
     return segmented_file_name
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def home():
+    if not os.path.exists(os.path.join(UPLOAD_FOLDER, 'hipp')):
+        print("Upload folder for hippocampus segmentations do not exist")
+        print("Creating ", os.path.join(UPLOAD_FOLDER, 'hipp'))
+        os.makedirs(os.path.join(UPLOAD_FOLDER, 'hipp'))
+    if not os.path.exists(os.path.join(UPLOAD_FOLDER, 'tumor')):
+        print("Upload folder for brain tumor segmentations do not exist")
+        print("Creating ", os.path.join(UPLOAD_FOLDER, 'tumor'))
+        os.makedirs(os.path.join(UPLOAD_FOLDER, 'tumor'))
+    return render_template('index.html')
+    # return redirect(url_for('home'))
+
+
+@app.route('/hipp', methods=['POST'])
+def upload_hipp():
     if request.method == 'POST':
         # Check if the POST request has a file part
         if 'file' not in request.files:
@@ -113,7 +127,7 @@ def home():
             # Securely save the file
             filename = file.filename
 
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'hipp', filename)
             file.save(file_path)
             segmented_file_name = segment_hippocampus(file_path)
 
@@ -121,9 +135,36 @@ def home():
             return redirect(url_for('visualize', filename=segmented_file_name))
         else:
             return "Only '.nii.gz' files are allowed."
-
     return render_template('index.html')
 
+@app.route('/tumor', methods=['POST'])
+def upload_tumor():
+    if request.method == 'POST':
+        # Check if the POST request has a file part
+        if 'file' not in request.files:
+            return redirect(request.url)
+
+        file = request.files['file']
+
+        # If the user does not select a file, the browser submits an empty file
+        if file.filename == '':
+            return redirect(request.url)
+
+        # Check if the file is allowed
+        if file and allowed_file(file.filename):
+            # Securely save the file
+            filename = file.filename
+
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'tumor', filename)
+            file.save(file_path)
+            return render_template('coming_soon.html')
+            # segmented_file_name = segment_hippocampus(file_path)
+
+            # Redirect to the visualization page with the filename
+            # return redirect(url_for('visualize', filename=segmented_file_name))
+        else:
+            return "Only '.nii.gz' files are allowed."
+    return render_template('index.html')
 
 @app.route('/visualize/<filename>')
 def visualize(filename):
