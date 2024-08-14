@@ -163,6 +163,6 @@ cython_debug/
 
 .vscode/
 
-uploads/
-segmentations/
-outputs/
+Flask_App/uploads/
+Flask_App/segmentations/
+Flask_App/outputs/

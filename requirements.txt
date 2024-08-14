@@ -1,0 +1,6 @@
+simpleitk
+numpy
+matplotlib
+plotly
+flask
+hsf[gpu]
