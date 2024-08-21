@@ -166,4 +166,3 @@ cython_debug/
 app/uploads/
 app/segmentations/
 app/outputs/
-app/static/
