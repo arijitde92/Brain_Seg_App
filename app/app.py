@@ -11,12 +11,12 @@ import plotly.graph_objs as go
 
 app = Flask(__name__)
 
-OUTPUT_ROOT = "segmentations"
+OUTPUT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)),"segmentations")
 ROI_MARGIN = '[20,8,20]'
 CONTRAST = 't1'
 SEG_CA_MODE = '1/2/3'
 # Configure upload folder
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)),'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create the folder if it doesn't exist
 os.makedirs(OUTPUT_ROOT, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -80,21 +80,28 @@ def segment_hippocampus(image_path):
     # Print the output and error (if any)
     print("Output:")
     print(process.stdout)
-    print("Error:")
-    print(process.stderr)
+    if process.stderr:
+        print("Error:")
+        print(process.stderr)
+        return "ERROR: " + str(process.stderr)
 
     sub_name = image_path.split(os.sep)[-1].split('.')[0]
-    left_seg_file = str(os.path.join(UPLOAD_FOLDER, 'hipp', sub_name + '_left_hippocampus_seg.nii.gz'))
-    right_seg_file = str(os.path.join(UPLOAD_FOLDER, 'hipp', sub_name + '_right_hippocampus_seg.nii.gz'))
-    left_seg = sitk.ReadImage(left_seg_file)
-    right_seg = sitk.ReadImage(right_seg_file)
-    combined_image = sitk.Or(left_seg, right_seg)
+    left_seg_file = str(os.path.join(os.path.abspath(UPLOAD_FOLDER), 'hipp', sub_name + '_left_hippocampus_seg.nii.gz'))
+    right_seg_file = str(os.path.join(os.path.abspath(UPLOAD_FOLDER), 'hipp', sub_name + '_right_hippocampus_seg.nii.gz'))
+    try:
+        left_seg = sitk.ReadImage(left_seg_file)
+        right_seg = sitk.ReadImage(right_seg_file)
+        combined_image = sitk.Or(left_seg, right_seg)
 
-    segmented_file_path = str(os.path.join(app.config['OUTPUT_FOLDER'], sub_name + '_seg.nii.gz'))
-    segmented_file_name = sub_name + '_seg.nii.gz'
-    print("Writing segmented image in: ", segmented_file_path)
-    sitk.WriteImage(combined_image, segmented_file_path)
-    return segmented_file_name
+        segmented_file_path = str(os.path.join(app.config['OUTPUT_FOLDER'], sub_name + '_seg.nii.gz'))
+        segmented_file_name = sub_name + '_seg.nii.gz'
+        print("Writing segmented image in: ", segmented_file_path)
+        sitk.WriteImage(combined_image, segmented_file_path)
+        return segmented_file_name
+    except RuntimeError as err:
+        print(err)
+        return "ERROR "+str(err)
+        
 
 
 @app.route('/')
@@ -115,6 +122,11 @@ def download_file(filename):
     # Assumes the segmentations are stored in a folder named 'segmentations' at the same level as templates
     # directory = os.path.join(app.config['OUTPUT_FOLDER'])
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
+
+@app.route('/error')
+def error():
+    error_msg = request.args.get('error_msg')
+    return render_template('error.html', error_msg=error_msg)
 
 @app.route('/hipp', methods=['POST'])
 def upload_hipp():
@@ -137,9 +149,11 @@ def upload_hipp():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'hipp', filename)
             file.save(file_path)
             segmented_file_name = segment_hippocampus(file_path)
-
-            # Redirect to the visualization page with the filename
-            return redirect(url_for('visualize', filename=segmented_file_name, task='hipp'))
+            if not segmented_file_name.startswith("ERROR"):
+                # Redirect to the visualization page with the filename
+                return redirect(url_for('visualize', filename=segmented_file_name, task='hipp'))
+            else:
+                return redirect(url_for('error', error_msg=segmented_file_name))
         else:
             return "Only '.nii.gz' files are allowed."
     return render_template('index.html')
