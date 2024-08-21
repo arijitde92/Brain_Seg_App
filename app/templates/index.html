@@ -9,30 +9,72 @@
     
 </head>
 <body>
-    <h1>Welcome to the 3D Brain Analysis and Visualization App</h1>
+
+    <main role="main">
+      <section class="jumbotron text-center bg-white">
+        <div class="container">
+          <h1 class="jumbotron-heading">Brain Analysis and Visualization App</h1>
+          <p class="lead text-muted">This app is for analyzing your brain image data. You can upload 3D brain scans to get segmentations of either hippocampus or brain tumor.</p>
+          <p>
+            Made by <a href="https://arijitde92.github.io/" target="_blank">Arijit De</a> and <a href="https://sites.google.com/site/anandachowdhury/" target="_blank">Prof. Ananda S. Chowdhury</a>, <a href="https://sites.google.com/site/ivprgroup/" target="_blank">IVPR Group</a>, <a href="https://jadavpuruniversity.in/" target="_blank">Jadavpur University</a>
+          </p>
+            <img src="../static/images/Jadavpur_University_Logo.png" class="img-thumbnail" alt="...">
+        </div>
+      </section>
     <div class="container">
-        <div class="row">
-          <div class="col">
-            <h2>Hippocampus Segmentation</h2>
+        <div class="row justify-content-around">
+          <div class="col-md-5">
+            <h4 class="display-4">Hippocampus Segmentation</h4>
             <form id="hipp_form" action="/hipp" method="post" enctype="multipart/form-data">
-                <input type="file" name="file" accept=".nii.gz" required>
-                <button type="submit">Upload Image</button>
+                <p>Upload 3D brain scans in <strong>Nifti file format</strong></p>
+                <input type="file" name="file" accept=".nii.gz" required><br><br>
+                <button type="submit" class="btn btn-primary" onclick="showModal()">Upload Image</button>
             </form>
+              <br>
             <p>Download and try with an example data from <a href="https://drive.google.com/file/d/1j3HgX13Y6_RuKFgCScVA22OyW7tEExm4/view?usp=drive_link" target="_blank">here</a></p>
           </div>
-          <div class="col">
-            <h2>Brain Tumor Segmentation</h2>
+          <div class="col-md-5 offset-md-2">
+            <h4 class="display-4">Brain Tumor Segmentation</h4>
             <form id="tumor_form" action="/tumor" method="post" enctype="multipart/form-data">
-                <input type="file" name="file" accept=".nii.gz" required>
-                <button type="submit">Upload Image</button>
+                <p>Upload 3D brain scans in <strong>Nifti file format</strong></p>
+                <input type="file" name="file" accept=".nii.gz" required><br><br>
+                <button type="submit" class="btn btn-primary" onclick="showWait()">Upload Image</button>
+                <p id="waitPara" hidden="hidden">Segmenting Image. Please wait. You will be automatically redirected to the results once segmentation is complete</p>
             </form>
           </div>
         </div>
+        <!-- Modal -->
+        <div class="modal fade" id="loadingModal" tabindex="-1" role="dialog" aria-labelledby="loadingModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="loadingModalLabel">Please wait</h5>
+              </div>
+              <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-3">Segmenting data, this might take a few minutes...</p>
+              </div>
+            </div>
+          </div>
+        </div>
     </div>
+    </main>
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script>
+        function showModal()
+        {
+            $('#loadingModal').modal('show');
+        }
+        /*function showWait() {
+            let para = document.getElementById('waitPara');
+            para.hidden=false;
+        }*/
+    </script>
 </body>
 </html>

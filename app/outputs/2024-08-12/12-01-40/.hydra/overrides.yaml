@@ -1,5 +1,0 @@
-- files.path=/home/arijit-de/Documents/github/Brain_Seg_App/uploads
-- files.pattern=*.nii.gz
-- roiloc.margin=[20,8,20]
-- roiloc.contrast=t1
-- segmentation.ca_mode=1/2/3

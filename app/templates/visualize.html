@@ -75,10 +75,15 @@
             <div id="plotly-coronal" class="plotly-div"></div>
         </div>
     </div>
-
+    <!-- Add the download button -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="{{ url_for('download_file', filename=filename) }}" class="download-button">
+            Download Segmentation File
+        </a>
+    </div>
     <!-- 3D Volume Rendering -->
-    <h2>3D Volume Rendering</h2>
-    <div id="volume-plot"></div>
+    <!-- <h2>3D Volume Rendering</h2>
+    <div id="volume-plot"></div> -->
 
     <script>
         // Parse the data from the template

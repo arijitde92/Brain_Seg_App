@@ -3,7 +3,7 @@
 import os
 import subprocess
 from time import time
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 import SimpleITK as sitk
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,6 +18,7 @@ SEG_CA_MODE = '1/2/3'
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create the folder if it doesn't exist
+os.makedirs(OUTPUT_ROOT, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit the maximum file size to 16MB
 
@@ -83,14 +84,15 @@ def segment_hippocampus(image_path):
     print(process.stderr)
 
     sub_name = image_path.split(os.sep)[-1].split('.')[0]
-    left_seg_file = str(os.path.join(UPLOAD_FOLDER, sub_name + '_left_hippocampus_seg.nii.gz'))
-    right_seg_file = str(os.path.join(UPLOAD_FOLDER, sub_name + '_right_hippocampus_seg.nii.gz'))
+    left_seg_file = str(os.path.join(UPLOAD_FOLDER, 'hipp', sub_name + '_left_hippocampus_seg.nii.gz'))
+    right_seg_file = str(os.path.join(UPLOAD_FOLDER, 'hipp', sub_name + '_right_hippocampus_seg.nii.gz'))
     left_seg = sitk.ReadImage(left_seg_file)
     right_seg = sitk.ReadImage(right_seg_file)
     combined_image = sitk.Or(left_seg, right_seg)
 
-    segmented_file_path = os.path.join(OUTPUT_ROOT, sub_name + '_seg.nii.gz')
+    segmented_file_path = str(os.path.join(app.config['OUTPUT_FOLDER'], sub_name + '_seg.nii.gz'))
     segmented_file_name = sub_name + '_seg.nii.gz'
+    print("Writing segmented image in: ", segmented_file_path)
     sitk.WriteImage(combined_image, segmented_file_path)
     return segmented_file_name
 
@@ -108,6 +110,11 @@ def home():
     return render_template('index.html')
     # return redirect(url_for('home'))
 
+@app.route('/download/<filename>')
+def download_file(filename):
+    # Assumes the segmentations are stored in a folder named 'segmentations' at the same level as templates
+    # directory = os.path.join(app.config['OUTPUT_FOLDER'])
+    return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
 
 @app.route('/hipp', methods=['POST'])
 def upload_hipp():
@@ -132,7 +139,7 @@ def upload_hipp():
             segmented_file_name = segment_hippocampus(file_path)
 
             # Redirect to the visualization page with the filename
-            return redirect(url_for('visualize', filename=segmented_file_name))
+            return redirect(url_for('visualize', filename=segmented_file_name, task='hipp'))
         else:
             return "Only '.nii.gz' files are allowed."
     return render_template('index.html')
@@ -167,12 +174,13 @@ def upload_tumor():
     return render_template('index.html')
 
 @app.route('/visualize/<filename>')
-def visualize(filename):
+def visualize(filename: str):
     """Visualize the NIfTI file using 2D and 3D rendering."""
+    task = request.args.get('task', default='hipp', type=str)
     # Load the NIfTI file using SimpleITK
     seg_file_path = str(os.path.join(app.config['OUTPUT_FOLDER'], filename))
     input_file_name = filename.replace('_seg', '')
-    input_file_path = str(os.path.join(app.config['UPLOAD_FOLDER'], input_file_name))
+    input_file_path = str(os.path.join(app.config['UPLOAD_FOLDER'], task, input_file_name))
     print("Loading Images")
 
     seg_img = sitk.ReadImage(seg_file_path)
