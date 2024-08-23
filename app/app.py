@@ -8,7 +8,23 @@ import SimpleITK as sitk
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
-
+from monai.networks.nets import AttentionUnet
+from monai.inferers import sliding_window_inference
+from monai.transforms import (
+    Compose,
+    LoadImage,
+    EnsureChannelFirst,
+    EnsureType,
+    Orientation,
+    Spacing,
+    NormalizeIntensity,
+    Activations,
+    AsDiscrete
+)
+from BrainTumorDataset import BrainTumorDataset
+import torch
+DEVICE = torch.device("cuda:0")
+# DEVICE = torch.device("cpu")
 app = Flask(__name__)
 
 OUTPUT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)),"segmentations")
@@ -19,6 +35,8 @@ SEG_CA_MODE = '1/2/3'
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)),'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create the folder if it doesn't exist
 os.makedirs(OUTPUT_ROOT, exist_ok=True)
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best_metric_model.pth")
+app.config['MODEL_PATH'] = MODEL_PATH
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit the maximum file size to 16MB
 
@@ -101,9 +119,70 @@ def segment_hippocampus(image_path):
     except RuntimeError as err:
         print(err)
         return "ERROR "+str(err)
-        
 
-
+# define inference method
+def tumor_inference(input, model):
+    def _compute(input):
+        return sliding_window_inference(
+            inputs=input,
+            roi_size=(240, 240, 160),
+            sw_batch_size=1,
+            predictor=model,
+            overlap=0.5,
+        )
+    return _compute(input)
+def segment_tumor(image_path: str):
+    absolute_path = os.path.abspath(os.path.expanduser(os.path.join(UPLOAD_FOLDER, 'hipp')))
+    print(absolute_path)
+    sub_name = image_path.split(os.sep)[-1].split('.')[0]
+    test_transform = Compose(
+        [
+            LoadImage(),
+            EnsureChannelFirst(),
+            EnsureType(),
+            Orientation(axcodes="RAS"),
+            Spacing(pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            NormalizeIntensity(nonzero=True, channel_wise=True),
+        ]
+    )
+    post_trans = Compose([Activations(sigmoid=True), AsDiscrete(threshold=0.5)])
+    test_ds = BrainTumorDataset([image_path], transform=test_transform)
+    test_image = test_ds[0].unsqueeze(0).to(DEVICE)
+    model = AttentionUnet(spatial_dims=3,
+                          in_channels=1,
+                          out_channels=1,
+                          channels=(16, 32, 64, 128, 256),
+                          strides=(2, 2, 2, 2),
+                          dropout=0.2,
+                          ).to(DEVICE)
+    # model.load_state_dict(torch.load(app.config['MODEL_PATH'], weights_only=True, map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load(app.config['MODEL_PATH'], weights_only=True, map_location=torch.device('cpu')))
+    model.eval()
+    print("Model Loaded")
+    try:
+        with torch.no_grad():
+            print("Segmenting")
+            output = tumor_inference(test_image, model)
+            output = post_trans(output[0])
+            image_array = test_image.detach().cpu().numpy()
+            output_array = output.detach().cpu().numpy()
+            image_array = np.squeeze(np.squeeze(image_array))
+            output_array = np.squeeze(np.squeeze(output_array))
+            # print(image_array.shape)
+            # print(output_array.shape)
+            img_sitk = sitk.ReadImage(image_path)
+            output_sitk = sitk.GetImageFromArray(np.moveaxis(output_array, [0,1,2], [1,2,0]))
+            output_path = str(os.path.join(app.config['OUTPUT_FOLDER'], sub_name + '_seg.nii.gz'))
+            input_origin = img_sitk.GetOrigin()
+            output_sitk.SetOrigin(input_origin)
+            # output_sitk.SetSpacing((1.0, 1.0, 1.0))
+            segmented_file_name = sub_name + '_seg.nii.gz'
+            print("Writing segmented image in: ", output_path)
+            sitk.WriteImage(output_sitk, output_path)
+            return segmented_file_name
+    except Exception as err:
+        print(err)
+        return "ERROR " + str(err)
 @app.route('/')
 def home():
     if not os.path.exists(os.path.join(UPLOAD_FOLDER, 'hipp')):
@@ -178,11 +257,13 @@ def upload_tumor():
 
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'tumor', filename)
             file.save(file_path)
-            return render_template('coming_soon.html')
-            # segmented_file_name = segment_hippocampus(file_path)
-
-            # Redirect to the visualization page with the filename
-            # return redirect(url_for('visualize', filename=segmented_file_name))
+            # return render_template('coming_soon.html')
+            segmented_file_name = segment_tumor(file_path)
+            if not segmented_file_name.startswith("ERROR"):
+                # Redirect to the visualization page with the filename
+                return redirect(url_for('visualize', filename=segmented_file_name, task='tumor'))
+            else:
+                return redirect(url_for('error', error_msg=segmented_file_name))
         else:
             return "Only '.nii.gz' files are allowed."
     return render_template('index.html')
@@ -199,7 +280,16 @@ def visualize(filename: str):
 
     seg_img = sitk.ReadImage(seg_file_path)
     input_img = sitk.ReadImage(input_file_path)
-
+    print("Input Image")
+    print(input_img.GetSize())
+    print(input_img.GetOrigin())
+    print(input_img.GetSpacing())
+    print(input_img.GetDimension())
+    print("Segmented Image")
+    print(seg_img.GetSize())
+    print(seg_img.GetOrigin())
+    print(seg_img.GetSpacing())
+    print(seg_img.GetDimension())
     # Resample the image to a square grid
     print("Resampling Images")
     resampled_seg_img = resample_image_to_square_grid(seg_img)
