@@ -9,7 +9,7 @@ itk
 scikit-image
 torch
 torchvision
-torchaudio
+torchaudioss
 tensorboard
 ignite
 monai

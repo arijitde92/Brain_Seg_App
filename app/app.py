@@ -170,15 +170,16 @@ def segment_tumor(image_path: str):
             output_array = np.squeeze(np.squeeze(output_array))
             # print(image_array.shape)
             # print(output_array.shape)
-            img_sitk = sitk.ReadImage(image_path)
+            img_sitk = sitk.GetImageFromArray(np.moveaxis(image_array, [0,1,2], [1,2,0]))
             output_sitk = sitk.GetImageFromArray(np.moveaxis(output_array, [0,1,2], [1,2,0]))
             output_path = str(os.path.join(app.config['OUTPUT_FOLDER'], sub_name + '_seg.nii.gz'))
-            input_origin = img_sitk.GetOrigin()
-            output_sitk.SetOrigin(input_origin)
+            # input_origin = img_sitk.GetOrigin()
+            # output_sitk.SetOrigin(input_origin)
             # output_sitk.SetSpacing((1.0, 1.0, 1.0))
             segmented_file_name = sub_name + '_seg.nii.gz'
             print("Writing segmented image in: ", output_path)
             sitk.WriteImage(output_sitk, output_path)
+            sitk.WriteImage(img_sitk, image_path)
             return segmented_file_name
     except Exception as err:
         print(err)
