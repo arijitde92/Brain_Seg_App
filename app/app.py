@@ -23,8 +23,8 @@ from monai.transforms import (
 )
 from BrainTumorDataset import BrainTumorDataset
 import torch
-DEVICE = torch.device("cuda:0")
-# DEVICE = torch.device("cpu")
+# DEVICE = torch.device("cuda:0")
+DEVICE = torch.device("cpu")
 app = Flask(__name__)
 
 OUTPUT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)),"segmentations")
