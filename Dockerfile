@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM docker.io/library/debian:bookworm-slim AS base
 FROM base AS builder
 
