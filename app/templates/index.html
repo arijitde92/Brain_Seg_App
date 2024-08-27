@@ -40,6 +40,8 @@
                 <input type="file" name="file" accept=".nii.gz" required><br><br>
                 <button type="submit" class="btn btn-primary" onclick="showModal()">Upload Image</button>
             </form>
+              <br>
+              <p>Download and try with an example data from <a href="{{ url_for('download_sample_file', filename='BraTS20_Validation_010_t1ce.nii.gz') }}" class="download-button" target="_blank">here</a></p>
           </div>
         </div>
         <!-- Modal -->

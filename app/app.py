@@ -203,6 +203,12 @@ def download_file(filename):
     # directory = os.path.join(app.config['OUTPUT_FOLDER'])
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
 
+@app.route('/download_sample/<filename>')
+def download_sample_file(filename):
+    # Assumes the segmentations are stored in a folder named 'segmentations' at the same level as templates
+    # directory = os.path.join(app.config['OUTPUT_FOLDER'])
+    return send_from_directory("sample_data", filename, as_attachment=True)
+
 @app.route('/error')
 def error():
     error_msg = request.args.get('error_msg')
