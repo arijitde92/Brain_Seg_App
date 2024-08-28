@@ -16,6 +16,5 @@ monai
 plotly
 flask
 hsf[gpu]
-onnxruntime-gpu==1.18.1
 onnxruntime==1.18.1
 antspyx
