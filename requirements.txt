@@ -6,10 +6,10 @@ SimpleITK
 scikit-learn
 nibabel
 itk
+antspyx
 scikit-image
 torch
 torchvision
-torchaudio
 tensorboard
 ignite
 monai
@@ -17,4 +17,3 @@ plotly
 flask
 hsf[gpu]
 onnxruntime==1.18.1
-antspyx
