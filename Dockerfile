@@ -1,63 +1,35 @@
 # syntax=docker/dockerfile:1
-FROM docker.io/library/debian:bookworm-slim AS base
-FROM base AS builder
-
-RUN \
-    --mount=type=cache,sharing=private,target=/var/cache/apt \
-    apt-get update && apt-get install -y g++-11 cmake make ninja-build git
-
-RUN git config --global url.'https://'.insteadOf 'git://'
-
-COPY . /usr/local/src/ants
-WORKDIR /build
-
-ARG CC=gcc-11 CXX=g++-11 BUILD_SHARED_LIBS=ON
-
-RUN cmake \
-    -GNinja \
-    -DBUILD_TESTING=ON \
-    -DRUN_LONG_TESTS=OFF \
-    -DRUN_SHORT_TESTS=ON \
-    -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS} \
-    -DCMAKE_INSTALL_PREFIX=/opt/ants \
-    /usr/local/src/ants
-RUN cmake --build . --parallel
-WORKDIR /build/ANTS-build
-RUN cmake --install .
-
-ENV PATH="/opt/ants/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/ants/lib:$LD_LIBRARY_PATH"
-
-RUN cmake --build . --target test
-
-FROM base
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends bc \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-ENV PATH="/opt/ants/bin:$PATH" \
-    LD_LIBRARY_PATH="/opt/ants/lib:$LD_LIBRARY_PATH"
-
-COPY --from=builder /opt/ants /opt/ants
-
-LABEL org.opencontainers.image.authors="ANTsX team" \
-      org.opencontainers.image.url="https://stnava.github.io/ANTs/" \
-      org.opencontainers.image.source="https://github.com/ANTsX/ANTs" \
-      org.opencontainers.image.licenses="Apache License 2.0" \
-      org.opencontainers.image.title="Advanced Normalization Tools" \
-      org.opencontainers.image.description="ANTs is part of the ANTsX ecosystem (https://github.com/ANTsX). \
-ANTs Citation: https://pubmed.ncbi.nlm.nih.gov/24879923"
-
 # Use an official Python runtime as a parent image
 FROM python:3.10.14-slim
 
+# Set environment variables to prevent Python from buffering outputs
+ENV PYTHONUNBUFFERED=1
+
+# Install dependencies
+RUN apt-get update && apt-get install -y wget bzip2 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/miniconda && \
+    rm ~/miniconda.sh
+
+# RUN conda create -n hipp python=3.10 numpy pandas matplotlib tqdm scikit-learn scikit-image nibabel itk simpleitk flask monai tensorboard plotly pytorch torchvision torchaudio pytorch-cuda=12.1 ignite ants -c pytorch -c nvidia -c simpleitk -c conda-forge -c anaconda -c aramislab && conda activate hipp
+
+# Add Miniconda to PATH
+ENV PATH="/opt/miniconda/bin:$PATH"
+
+# Copy the environment file
+COPY hipp.yml .
+
+# Create the environment and install the packages in one step
+RUN conda env create -f hipp.yml && conda clean -afy
+
+# Activate the environment and install additional Python packages in one step
+RUN /bin/bash -c "source activate hipp && pip install antspyx hsf[cpu] onnxruntime==1.18.1"
+
 # Set the working directory in the container
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container at /app
 COPY . /app
@@ -65,5 +37,5 @@ COPY . /app
 # Make port 85 available to the world outside this container
 EXPOSE 85
 
-# Run app.py when the container launches
-CMD ["python", "app/app.py"]
+# Ensure the environment is activated when the container starts, and run the application
+CMD ["/bin/bash", "-c", "source activate hipp && python app/app.py"]
