@@ -10,4 +10,4 @@ An app for segmenting brain tumors and hippocampi.
 
 ## Screenshot of the App
 Following image shows how to upload and visualize a segmented brain tumor.
-![Screenshot](assets\gui_tumor.png)
+![Screenshot](assets/gui_tumor.png)
