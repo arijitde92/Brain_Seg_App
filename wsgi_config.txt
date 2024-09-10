@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve myflaskapp
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/root/Brain_Seg_App/app
+Environment="PATH=/root/miniconda3/envs/hipp/bin"
+ExecStart=/root/miniconda3/envs/hipp/bin/gunicorn --workers 3 --bind unix:/root/Brain_Seg_App/app/myflaskapp.sock -m 007 app:app
+
+[Install]
+WantedBy=multi-user.target
