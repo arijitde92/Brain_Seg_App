@@ -21,7 +21,7 @@ from monai.transforms import (
     Activations,
     AsDiscrete
 )
-from BrainTumorDataset import BrainTumorDataset
+from .BrainTumorDataset import BrainTumorDataset
 import torch
 # DEVICE = torch.device("cuda:0")
 DEVICE = torch.device("cpu")
@@ -83,7 +83,8 @@ def segment_hippocampus(image_path):
         'files.pattern="*.nii.gz"',
         f'roiloc.margin={ROI_MARGIN}',
         f'roiloc.contrast="{CONTRAST}"',
-        f'segmentation.ca_mode="{SEG_CA_MODE}"'
+        f'segmentation.ca_mode="{SEG_CA_MODE}"',
+        'hardware.engine_settings.execution_providers=["CPUExecutionProvider"]'
     ]
 
     # Combine the command and arguments into a single command string
@@ -340,4 +341,4 @@ def visualize(filename: str):
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=85)
+    app.run(host="0.0.0.0", port=5000)
