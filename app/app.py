@@ -156,8 +156,7 @@ def segment_tumor(image_path: str):
                           strides=(2, 2, 2, 2),
                           dropout=0.2,
                           ).to(DEVICE)
-    # model.load_state_dict(torch.load(app.config['MODEL_PATH'], weights_only=True, map_location=torch.device('cpu')))
-    model.load_state_dict(torch.load(app.config['MODEL_PATH'], weights_only=True, map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load(app.config['MODEL_PATH'], weights_only=True, map_location=DEVICE))
     model.eval()
     print("Model Loaded")
     try:
